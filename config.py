@@ -7,6 +7,7 @@ class Config:
         "DATABASE_URL", "sqlite:///app.db"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_BYTES", 25 * 1024 * 1024))
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

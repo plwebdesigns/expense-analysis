@@ -3,6 +3,52 @@
 {% block title %}Parser{% endblock %}
 
 {% block content %}
-  <h1>Parser</h1>
-  <p>Parser features will live here.</p>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="mb-0">Parser</h1>
+      <div class="text-muted">Drop a PDF or CSV to upload and preview extracted text.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <div
+        class="border border-2 rounded p-4 text-center bg-white"
+        style="border-style: dashed;"
+        role="button"
+        tabindex="0"
+        data-parser-dropzone
+        data-upload-endpoint="{{ url_for('main.parser_upload') }}"
+      >
+        <div class="fw-semibold mb-1">Drag &amp; drop PDF/CSV here</div>
+        <div class="text-muted">or click to choose a file</div>
+        <input
+          class="d-none"
+          type="file"
+          accept=".pdf,.csv,application/pdf,text/csv"
+          data-parser-file-input
+        />
+      </div>
+    </div>
+  </div>
+
+  <div data-parser-status></div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Extracted text preview</div>
+      <div class="text-muted small" data-parser-meta></div>
+    </div>
+    <div class="card-body">
+      <pre
+        class="border rounded p-3 bg-light mb-0"
+        style="white-space: pre-wrap; max-height: 45vh; overflow: auto;"
+        data-parser-preview
+      ></pre>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='parser.js') }}"></script>
 {% endblock %}
