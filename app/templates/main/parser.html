@@ -19,6 +19,7 @@
         tabindex="0"
         data-parser-dropzone
         data-upload-endpoint="{{ url_for('main.parser_upload') }}"
+        data-extract-endpoint="{{ url_for('main.parser_extract_table') }}"
       >
         <div class="fw-semibold mb-1">Drag &amp; drop PDF/CSV here</div>
         <div class="text-muted">or click to choose a file</div>
@@ -37,7 +38,12 @@
   <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <div class="fw-semibold">Extracted text preview</div>
-      <div class="text-muted small" data-parser-meta></div>
+      <div class="d-flex align-items-center gap-3">
+        <div class="text-muted small" data-parser-meta></div>
+        <button class="btn btn-outline-primary btn-sm d-none" type="button" data-parser-extract-table>
+          Extract table
+        </button>
+      </div>
     </div>
     <div class="card-body">
       <pre
@@ -45,6 +51,18 @@
         style="white-space: pre-wrap; max-height: 45vh; overflow: auto;"
         data-parser-preview
       ></pre>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-3 d-none" data-parser-table-card>
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Extracted table (raw)</div>
+      <div class="text-muted small" data-parser-table-meta></div>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0" data-parser-table></table>
+      </div>
     </div>
   </div>
 {% endblock %}
