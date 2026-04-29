@@ -5,37 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}Expense Analysis{% endblock %}</title>
     <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
     />
   </head>
-  <body>
-    <nav class="container">
-      <ul>
-        <li><strong>Expense Analysis</strong></li>
-      </ul>
-      {% if current_user.is_authenticated %}
-        <ul>
-          <li>{{ current_user.email }}</li>
-          <li><a href="{{ url_for('main.parser') }}">Parser</a></li>
-          <li>
-            <form action="{{ url_for('auth.logout') }}" method="post" style="margin:0">
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg bg-white border-bottom mb-4">
+      <div class="container">
+        <a class="navbar-brand fw-semibold" href="{{ url_for('main.index') }}">Expense Analysis</a>
+        {% if current_user.is_authenticated %}
+          <div class="ms-auto d-flex align-items-center gap-3">
+            <span class="text-muted small">{{ current_user.email }}</span>
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.parser') }}">Parser</a>
+            <form action="{{ url_for('auth.logout') }}" method="post" class="m-0">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-              <button type="submit" class="secondary outline">Sign out</button>
+              <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
             </form>
-          </li>
-        </ul>
-      {% endif %}
+          </div>
+        {% endif %}
+      </div>
     </nav>
 
-    <main class="container">
+    <main class="container pb-4">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-          <article class="flash flash-{{ category }}">{{ message }}</article>
+          {% set bs_category = "danger" if category in ["error", "danger"] else category %}
+          <div class="alert alert-{{ bs_category }} mb-3" role="alert">{{ message }}</div>
         {% endfor %}
       {% endwith %}
 
       {% block content %}{% endblock %}
     </main>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
   </body>
 </html>
