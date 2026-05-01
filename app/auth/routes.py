@@ -32,9 +32,13 @@ def login():
             db.select(User).filter_by(email=form.email.data.lower().strip())
         ).scalar_one_or_none()
 
-        if user is None or not user.check_password(form.password.data):
-            flash("Invalid email or password.", "error")
-            return render_template("auth/login.html", form=form), 401
+        if user is None:
+            flash("This email is not registered.", "error")
+            return render_template("auth/login.html", form=form)
+
+        if not user.check_password(form.password.data):
+            flash("Invalid password.", "error")
+            return render_template("auth/login.html", form=form)
 
         login_user(user, remember=form.remember_me.data)
         next_url = _safe_next_url(request.args.get("next"))
