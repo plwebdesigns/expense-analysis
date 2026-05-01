@@ -31,5 +31,25 @@ def register_cli(app: Flask) -> None:
         db.session.add(user)
         db.session.commit()
         click.echo(f"Created user {email} (id={user.id}).")
+        
+    @users.command("list")
+    def list_users() -> None:
+        """List all users."""
+        users = db.session.execute(db.select(User)).scalars().all()
+        click.echo("Users:")
+        for user in users:
+            click.echo(f" - {user.email} (id={user.id})")
+            
+    @users.command("delete")
+    @click.argument("email")
+    def delete_user(email: str) -> None:
+        """Delete a user with EMAIL."""
+        user = db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none()
+        if user is None:
+            click.echo(f"User {email} not found.", err=True)
+            raise click.exceptions.Exit(1)
+        db.session.delete(user)
+        db.session.commit()
+        click.echo(f"Deleted user {email} (id={user.id}).")
 
     app.cli.add_command(users)
