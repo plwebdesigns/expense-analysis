@@ -55,9 +55,16 @@
   </div>
 
   <div class="card shadow-sm mt-3 d-none" data-parser-table-card>
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-      <div class="fw-semibold">Extracted table (raw)</div>
-      <div class="text-muted small" data-parser-table-meta></div>
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="fw-semibold" data-parser-table-heading>Extracted table (edit below)</div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="text-muted small" data-parser-table-meta></div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Table actions">
+          <button type="button" class="btn btn-outline-secondary" data-parser-add-row>Add row</button>
+          <button type="button" class="btn btn-outline-secondary" data-parser-set-table>Set table</button>
+          <button type="button" class="btn btn-outline-secondary" data-parser-download-csv>Download CSV</button>
+        </div>
+      </div>
     </div>
     <div class="card-body">
       <div class="table-responsive">

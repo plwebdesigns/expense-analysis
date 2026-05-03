@@ -18,16 +18,41 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-function renderRawTable(tableEl, rows) {
-  if (!tableEl) return;
+function normalizeTableRows(rows) {
   const safeRows = Array.isArray(rows) ? rows : [];
-  if (safeRows.length === 0) {
+  let maxCols = 0;
+  for (const r of safeRows) {
+    const len = Array.isArray(r) ? r.length : 0;
+    if (len > maxCols) maxCols = len;
+  }
+  if (maxCols === 0) return [];
+  return safeRows.map((r) => {
+    const row = Array.isArray(r) ? [...r] : [];
+    while (row.length < maxCols) row.push("");
+    return row.map((c) => (c == null ? "" : String(c)));
+  });
+}
+
+function cellInputAttrs(rowIdx, colIdx, isHeader) {
+  const role = isHeader ? "Header" : `Row ${rowIdx}`;
+  const label = `${role}, column ${colIdx + 1}`;
+  return `class="form-control form-control-sm" type="text" data-parser-cell-input autocomplete="off" aria-label="${escapeHtml(label)}"`;
+}
+
+function renderReadOnlyTable(tableEl, rows) {
+  if (!tableEl) return;
+  const normalized = normalizeTableRows(rows);
+  if (normalized.length === 0) {
     tableEl.innerHTML = "";
+    delete tableEl.dataset.parserColCount;
+    delete tableEl.dataset.parserLocked;
     return;
   }
 
-  const head = safeRows[0] || [];
-  const body = safeRows.slice(1);
+  const head = normalized[0];
+  const body = normalized.slice(1);
+  tableEl.dataset.parserColCount = String(head.length);
+  tableEl.dataset.parserLocked = "1";
 
   const thead = `<thead><tr>${head
     .map((c) => `<th scope="col">${escapeHtml(c ?? "")}</th>`)
@@ -42,6 +67,130 @@ function renderRawTable(tableEl, rows) {
     .join("")}</tbody>`;
 
   tableEl.innerHTML = thead + tbody;
+}
+
+function renderEditableTable(tableEl, rows) {
+  if (!tableEl) return;
+  const normalized = normalizeTableRows(rows);
+  if (normalized.length === 0) {
+    tableEl.innerHTML = "";
+    delete tableEl.dataset.parserColCount;
+    delete tableEl.dataset.parserLocked;
+    return;
+  }
+
+  delete tableEl.dataset.parserLocked;
+
+  const head = normalized[0];
+  const body = normalized.slice(1);
+  const colCount = head.length;
+  tableEl.dataset.parserColCount = String(colCount);
+
+  const headerCells = head
+    .map((val, j) => `<th scope="col"><input value="${escapeHtml(val)}" ${cellInputAttrs(1, j, true)} /></th>`)
+    .join("");
+  const tbodyRows = body
+    .map((r, i) => {
+      const rowNum = i + 2;
+      const cells = r
+        .map((val, j) => `<td><input value="${escapeHtml(val)}" ${cellInputAttrs(rowNum, j, false)} /></td>`)
+        .join("");
+      const removeBtn = `<button type="button" class="btn btn-outline-danger btn-sm" data-parser-remove-row aria-label="Remove row">Remove</button>`;
+      return `<tr>${cells}<td class="text-end align-middle">${removeBtn}</td></tr>`;
+    })
+    .join("");
+
+  const headerActions = `<th scope="col" class="border-0 bg-transparent" style="width: 6rem;" aria-hidden="true"></th>`;
+  const theadFixed = `<thead><tr>${headerCells}${headerActions}</tr></thead>`;
+
+  tableEl.innerHTML = `${theadFixed}<tbody>${tbodyRows}</tbody>`;
+}
+
+function collectReadOnlyTableRows(tableEl) {
+  if (!tableEl) return [];
+  const rows = [];
+  const theadRow = tableEl.querySelector("thead tr");
+  if (theadRow) {
+    rows.push(Array.from(theadRow.querySelectorAll("th"), (th) => th.textContent.trim()));
+  }
+  tableEl.querySelectorAll("tbody tr").forEach((tr) => {
+    rows.push(Array.from(tr.querySelectorAll("td"), (td) => td.textContent.trim()));
+  });
+  return rows;
+}
+
+function collectTableRows(tableEl) {
+  if (!tableEl) return [];
+  if (tableEl.dataset.parserLocked === "1") {
+    return collectReadOnlyTableRows(tableEl);
+  }
+  const rows = [];
+  const theadRow = tableEl.querySelector("thead tr");
+  if (theadRow) {
+    const inputs = theadRow.querySelectorAll("th:not(:last-child) input[data-parser-cell-input]");
+    rows.push(Array.from(inputs, (inp) => inp.value));
+  }
+  const bodyRows = tableEl.querySelectorAll("tbody tr");
+  bodyRows.forEach((tr) => {
+    const inputs = tr.querySelectorAll("td:not(:last-child) input[data-parser-cell-input]");
+    rows.push(Array.from(inputs, (inp) => inp.value));
+  });
+  return rows;
+}
+
+function updateParserTableChrome(locked) {
+  const headingEl = document.querySelector("[data-parser-table-heading]");
+  const addRowBtn = document.querySelector("[data-parser-add-row]");
+  const setTableBtn = document.querySelector("[data-parser-set-table]");
+  if (headingEl) {
+    headingEl.textContent = locked ? "Extracted table" : "Extracted table (edit below)";
+  }
+  addRowBtn?.classList.toggle("d-none", !!locked);
+  setTableBtn?.classList.toggle("d-none", !!locked);
+}
+
+function encodeCsvField(s) {
+  const str = String(s ?? "");
+  if (/[",\r\n]/.test(str)) {
+    return `"${str.replaceAll('"', '""')}"`;
+  }
+  return str;
+}
+
+function rowsToCsv(rows) {
+  const lines = rows.map((r) => r.map(encodeCsvField).join(","));
+  return lines.join("\r\n");
+}
+
+function triggerCsvDownload(csvText, filename) {
+  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "extracted-table.csv";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function appendEmptyBodyRow(tableEl) {
+  if (!tableEl || tableEl.dataset.parserLocked === "1") return;
+  const colCount = parseInt(tableEl.dataset.parserColCount || "0", 10);
+  if (!colCount || colCount < 1) return;
+
+  const tbody = tableEl.querySelector("tbody");
+  if (!tbody) return;
+
+  const existingBodyRows = tbody.querySelectorAll("tr").length;
+  const rowNum = existingBodyRows + 2;
+
+  const cells = Array.from({ length: colCount }, (_, j) => {
+    return `<td><input ${cellInputAttrs(rowNum, j, false)} /></td>`;
+  }).join("");
+  const removeBtn = `<button type="button" class="btn btn-outline-danger btn-sm" data-parser-remove-row aria-label="Remove row">Remove</button>`;
+  tbody.insertAdjacentHTML("beforeend", `<tr>${cells}<td class="text-end align-middle">${removeBtn}</td></tr>`);
 }
 
 async function extractParserTable(opts) {
@@ -92,10 +241,10 @@ async function extractParserTable(opts) {
     return;
   }
 
-  // For now, render the largest table (by rows) as a best-effort “main” table.
   const best = tables.reduce((a, b) => ((b?.length || 0) > (a?.length || 0) ? b : a), tables[0]);
 
-  renderRawTable(tableEl, best);
+  renderEditableTable(tableEl, best);
+  updateParserTableChrome(false);
   tableCardEl?.classList.remove("d-none");
   if (tableMetaEl) tableMetaEl.textContent = `${tables.length} table(s) detected across pages`;
   setStatus(statusEl, "Table extracted.", "success");
@@ -195,6 +344,9 @@ function initParserDropzone() {
   const tableCardEl = document.querySelector("[data-parser-table-card]");
   const tableEl = document.querySelector("[data-parser-table]");
   const tableMetaEl = document.querySelector("[data-parser-table-meta]");
+  const addRowBtn = document.querySelector("[data-parser-add-row]");
+  const setTableBtn = document.querySelector("[data-parser-set-table]");
+  const downloadCsvBtn = document.querySelector("[data-parser-download-csv]");
 
   function setDragging(isDragging) {
     dropzone.classList.toggle("border-primary", isDragging);
@@ -241,6 +393,40 @@ function initParserDropzone() {
       tableEl,
       tableMetaEl,
     });
+  });
+
+  tableEl?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-parser-remove-row]");
+    if (!btn || !tableEl.contains(btn)) return;
+    const tr = btn.closest("tr");
+    if (!tr || tr.parentElement?.tagName !== "TBODY") return;
+    tr.remove();
+  });
+
+  addRowBtn?.addEventListener("click", () => {
+    appendEmptyBodyRow(tableEl);
+  });
+
+  setTableBtn?.addEventListener("click", () => {
+    const rows = collectTableRows(tableEl);
+    if (rows.length === 0) {
+      setStatus(statusEl, "Nothing to set.", "warning");
+      return;
+    }
+    renderReadOnlyTable(tableEl, rows);
+    updateParserTableChrome(true);
+    setStatus(statusEl, "Table set.", "success");
+  });
+
+  downloadCsvBtn?.addEventListener("click", () => {
+    const rows = collectTableRows(tableEl);
+    if (rows.length === 0) {
+      setStatus(statusEl, "Nothing to download.", "warning");
+      return;
+    }
+    const csv = rowsToCsv(rows);
+    triggerCsvDownload(csv, "extracted-table.csv");
+    setStatus(statusEl, "CSV downloaded.", "success");
   });
 }
 
