@@ -32,7 +32,12 @@
               <span class="nav-link text-muted small">{{ current_user.email }}</span>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('auth.logout') }}">Sign out</a>
+              <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-link nav-link border-0 py-2 px-lg-2">
+                  Sign out
+                </button>
+              </form>
             </li>
           </ul>
         {% endif %}
